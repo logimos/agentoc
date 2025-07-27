@@ -1,14 +1,16 @@
+// core/AgentContext.ts
+
 import { AgentMessage, AgentResponse, MemoryEntry } from './AgentProtocol'
 import { MessageBus } from './MessageBus'
-import { AgentMemory, MemoryStore } from './AgentMemory'
+import { AgentMemory } from './AgentMemory'
+import { Logger } from './Logger'
 import { v4 as uuidv4 } from 'uuid'
 
 export class AgentContext {
-    private memory: AgentMemory
+    private memory = new AgentMemory()
+    private logger = new Logger()
 
-    constructor(private bus: MessageBus, private selfId: string, memoryStore?: MemoryStore) {
-        this.memory = new AgentMemory(memoryStore)
-    }
+    constructor(private bus: MessageBus, private selfId: string) { }
 
     async send(to: string, content: string, opts?: Partial<AgentMessage>): Promise<AgentResponse> {
         const traceId = opts?.traceId ?? uuidv4()
@@ -42,6 +44,7 @@ export class AgentContext {
         }
 
         console.log(`[SEND] [${traceId}] ${message.from} → ${message.to} :: ${content}`)
+        this.logger.logSend(traceId, message.from, message.to, content)
         this.memory.record(traceId, {
             direction: 'sent',
             peer: to,
@@ -52,6 +55,7 @@ export class AgentContext {
 
         const response = await this.bus.send(message)
 
+        this.logger.logReceive(traceId, response.from, response.to, response.content)
         this.memory.record(traceId, {
             direction: 'received',
             peer: response.from,

@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentContext } from '../core/AgentContext';
 import { MessageBus } from '../core/MessageBus';
 import { Agent, MemoryEntry } from '../core/AgentProtocol';
 import { MemoryStore } from '../core/AgentMemory';
+import fs from 'fs';
+import path from 'path';
 
 // Mock console.log to avoid cluttering test output
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
@@ -12,24 +14,16 @@ vi.mock('uuid', () => ({
     v4: vi.fn(() => 'mock-uuid-12345')
 }));
 
-// Mock memory store for testing
-class MockMemoryStore implements MemoryStore {
-    private data: Map<string, MemoryEntry[]> = new Map();
-
-    record(traceId: string, entry: MemoryEntry): void {
-        if (!this.data.has(traceId)) {
-            this.data.set(traceId, []);
-        }
-        this.data.get(traceId)!.push(entry);
-    }
-
-    recall(traceId: string): MemoryEntry[] {
-        return this.data.get(traceId) || [];
-    }
-
-    // Helper method to clear data between tests
-    clear(): void {
-        this.data.clear();
+// Helper function to clean up memory files
+function cleanupMemoryFiles() {
+    const memoryDir = path.join(process.cwd(), 'memory');
+    if (fs.existsSync(memoryDir)) {
+        const files = fs.readdirSync(memoryDir);
+        files.forEach(file => {
+            if (file.endsWith('.json')) {
+                fs.unlinkSync(path.join(memoryDir, file));
+            }
+        });
     }
 }
 
@@ -37,11 +31,10 @@ describe('AgentContext', () => {
     let agentContext: AgentContext;
     let mockMessageBus: MessageBus;
     let mockAgent: Agent;
-    let mockMemoryStore: MockMemoryStore;
 
     beforeEach(() => {
         consoleSpy.mockClear();
-        mockMemoryStore = new MockMemoryStore();
+        cleanupMemoryFiles(); // Clean up memory files before each test
 
         // Create mock message bus
         mockMessageBus = {
@@ -69,7 +62,11 @@ describe('AgentContext', () => {
             })
         };
 
-        agentContext = new AgentContext(mockMessageBus, 'context-agent', mockMemoryStore);
+        agentContext = new AgentContext(mockMessageBus, 'context-agent');
+    });
+
+    afterEach(() => {
+        cleanupMemoryFiles(); // Clean up memory files after each test
     });
 
     describe('send', () => {
