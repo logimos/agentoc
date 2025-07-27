@@ -1,12 +1,35 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentMemory } from '../core/AgentMemory';
+import { AgentMemory, MemoryStore } from '../core/AgentMemory';
 import { MemoryEntry } from '../core/AgentProtocol';
+
+// Mock memory store for testing
+class MockMemoryStore implements MemoryStore {
+    private data: Map<string, MemoryEntry[]> = new Map();
+
+    record(traceId: string, entry: MemoryEntry): void {
+        if (!this.data.has(traceId)) {
+            this.data.set(traceId, []);
+        }
+        this.data.get(traceId)!.push(entry);
+    }
+
+    recall(traceId: string): MemoryEntry[] {
+        return this.data.get(traceId) || [];
+    }
+
+    // Helper method to clear data between tests
+    clear(): void {
+        this.data.clear();
+    }
+}
 
 describe('AgentMemory', () => {
     let agentMemory: AgentMemory;
+    let mockStore: MockMemoryStore;
 
     beforeEach(() => {
-        agentMemory = new AgentMemory();
+        mockStore = new MockMemoryStore();
+        agentMemory = new AgentMemory(mockStore);
     });
 
     describe('record', () => {

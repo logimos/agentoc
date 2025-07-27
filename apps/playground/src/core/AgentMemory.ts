@@ -1,16 +1,57 @@
 import { MemoryEntry } from './AgentProtocol'
+import path from 'path'
+import fs from 'fs'
 
-export class AgentMemory {
-    private store = new Map<string, MemoryEntry[]>()
+export interface MemoryStore {
+    record(traceId: string, entry: MemoryEntry): void
+    recall(traceId: string): MemoryEntry[]
+}
+
+export class FileMemoryStore implements MemoryStore {
+    private baseDir = path.join(process.cwd(), 'memory')
+
+    constructor() {
+        if (!fs.existsSync(this.baseDir)) {
+            fs.mkdirSync(this.baseDir, { recursive: true })
+        }
+    }
+
+    private getFilePath(traceId: string): string {
+        return path.join(this.baseDir, `${traceId}.json`)
+    }
 
     record(traceId: string, entry: MemoryEntry) {
-        if (!this.store.has(traceId)) {
-            this.store.set(traceId, [])
+        const filePath = this.getFilePath(traceId)
+        let data: MemoryEntry[] = []
+
+        if (fs.existsSync(filePath)) {
+            data = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
         }
-        this.store.get(traceId)!.push(entry)
+
+        data.push(entry)
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
     }
 
     recall(traceId: string): MemoryEntry[] {
-        return this.store.get(traceId) ?? []
+        const filePath = this.getFilePath(traceId)
+        if (!fs.existsSync(filePath)) return []
+        return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+    }
+}
+
+export class AgentMemory {
+    private store: MemoryStore
+
+    constructor(store?: MemoryStore) {
+        this.store = store || new FileMemoryStore()
+    }
+
+    record(traceId: string, entry: MemoryEntry) {
+        this.store.record(traceId, entry)
+    }
+
+
+    recall(traceId: string): MemoryEntry[] {
+        return this.store.recall(traceId)
     }
 }

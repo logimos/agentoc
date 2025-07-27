@@ -1,12 +1,14 @@
 import { AgentMessage, AgentResponse, MemoryEntry } from './AgentProtocol'
 import { MessageBus } from './MessageBus'
-import { AgentMemory } from './AgentMemory'
+import { AgentMemory, MemoryStore } from './AgentMemory'
 import { v4 as uuidv4 } from 'uuid'
 
 export class AgentContext {
-    private memory = new AgentMemory()
+    private memory: AgentMemory
 
-    constructor(private bus: MessageBus, private selfId: string) { }
+    constructor(private bus: MessageBus, private selfId: string, memoryStore?: MemoryStore) {
+        this.memory = new AgentMemory(memoryStore)
+    }
 
     async send(to: string, content: string, opts?: Partial<AgentMessage>): Promise<AgentResponse> {
         const traceId = opts?.traceId ?? uuidv4()

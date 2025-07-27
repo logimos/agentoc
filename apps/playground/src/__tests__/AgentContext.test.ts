@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentContext } from '../core/AgentContext';
 import { MessageBus } from '../core/MessageBus';
-import { Agent } from '../core/AgentProtocol';
+import { Agent, MemoryEntry } from '../core/AgentProtocol';
+import { MemoryStore } from '../core/AgentMemory';
 
 // Mock console.log to avoid cluttering test output
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
@@ -11,13 +12,36 @@ vi.mock('uuid', () => ({
     v4: vi.fn(() => 'mock-uuid-12345')
 }));
 
+// Mock memory store for testing
+class MockMemoryStore implements MemoryStore {
+    private data: Map<string, MemoryEntry[]> = new Map();
+
+    record(traceId: string, entry: MemoryEntry): void {
+        if (!this.data.has(traceId)) {
+            this.data.set(traceId, []);
+        }
+        this.data.get(traceId)!.push(entry);
+    }
+
+    recall(traceId: string): MemoryEntry[] {
+        return this.data.get(traceId) || [];
+    }
+
+    // Helper method to clear data between tests
+    clear(): void {
+        this.data.clear();
+    }
+}
+
 describe('AgentContext', () => {
     let agentContext: AgentContext;
     let mockMessageBus: MessageBus;
     let mockAgent: Agent;
+    let mockMemoryStore: MockMemoryStore;
 
     beforeEach(() => {
         consoleSpy.mockClear();
+        mockMemoryStore = new MockMemoryStore();
 
         // Create mock message bus
         mockMessageBus = {
@@ -45,7 +69,7 @@ describe('AgentContext', () => {
             })
         };
 
-        agentContext = new AgentContext(mockMessageBus, 'context-agent');
+        agentContext = new AgentContext(mockMessageBus, 'context-agent', mockMemoryStore);
     });
 
     describe('send', () => {
