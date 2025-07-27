@@ -1,0 +1,42 @@
+{
+  "name": "agentoc",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "test": "pnpm -r test",
+    "test:ui": "pnpm -r test:ui",
+    "clean": "pnpm -r clean",
+    "type-check": "pnpm -r type-check",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish",
+    "@myorg/playground:build": "pnpm --filter @myorg/playground build",
+    "@myorg/playground:dev": "pnpm --filter @myorg/playground dev",
+    "@myorg/playground:lint": "pnpm --filter @myorg/playground lint",
+    "@myorg/playground:format": "pnpm --filter @myorg/playground format",
+    "@myorg/playground:test": "pnpm --filter @myorg/playground test",
+    "@myorg/playground:test:ui": "pnpm --filter @myorg/playground test:ui",
+    "@myorg/playground:clean": "pnpm --filter @myorg/playground clean",
+    "@myorg/playground:type-check": "pnpm --filter @myorg/playground type-check"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.5",
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^24.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@vitest/ui": "^3.2.4",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
