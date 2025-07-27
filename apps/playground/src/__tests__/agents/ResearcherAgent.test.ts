@@ -1,31 +1,37 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { ResearcherAgent } from '../../agents/ResearcherAgent';
-import { AgentMessage, AgentResponse } from '../../core/AgentProtocol';
 import { AgentContext } from '../../core/AgentContext';
+import { AgentMessage } from '../../core/AgentProtocol';
+import { MessageBus } from '../../core/MessageBus';
 
 // Mock console.log to avoid cluttering test output
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
 
 // Mock uuid to return predictable values
 vi.mock('uuid', () => ({
-    v4: vi.fn(() => 'mock-uuid-12345')
+    v4: vi.fn(() => 'mock-uuid-12345'),
 }));
 
 describe('ResearcherAgent', () => {
     let researcherAgent: ResearcherAgent;
     let mockContext: AgentContext;
+    let mockMessageBus: MessageBus;
 
     beforeEach(() => {
         consoleSpy.mockClear();
 
-        // Create mock context
-        mockContext = {
+        // Create mock message bus
+        mockMessageBus = {
             send: vi.fn(),
-            findAgent: vi.fn(),
-            findAgents: vi.fn(),
-            getMemory: vi.fn()
-        } as any;
+            register: vi.fn(),
+            getAgentsByCapability: vi.fn(),
+            getFirstAgentByCapability: vi.fn(),
+            listAgents: vi.fn(),
+        } as unknown as MessageBus;
 
+        // Create mock context
+        mockContext = new AgentContext(mockMessageBus, 'researcher');
         researcherAgent = new ResearcherAgent();
         researcherAgent.setContext(mockContext);
     });
@@ -35,7 +41,10 @@ describe('ResearcherAgent', () => {
             expect(researcherAgent.id).toBe('researcher');
             expect(researcherAgent.name).toBe('Researcher Agent');
             expect(researcherAgent.capabilities).toEqual([
-                { name: 'research', description: 'Can find information related to a topic or goal' }
+                {
+                    name: 'research',
+                    description: 'Can find information related to a topic or goal',
+                },
             ]);
         });
     });
@@ -46,8 +55,8 @@ describe('ResearcherAgent', () => {
                 send: vi.fn(),
                 findAgent: vi.fn(),
                 findAgents: vi.fn(),
-                getMemory: vi.fn()
-            } as any;
+                getMemory: vi.fn(),
+            } as unknown as AgentContext;
 
             researcherAgent.setContext(newContext);
 
@@ -56,7 +65,7 @@ describe('ResearcherAgent', () => {
                 researcherAgent.receiveMessage({
                     from: 'user',
                     to: 'researcher',
-                    content: 'Research this goal: test'
+                    content: 'Research this goal: test',
                 });
             }).not.toThrow();
         });
@@ -73,7 +82,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights about fitness apps',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const message: AgentMessage = {
@@ -81,27 +90,35 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
             expect(mockContext.findAgent).toHaveBeenCalledWith('analyze');
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', 'Provide analysis for: fitness tracking app', {
-                traceId: 'trace-123',
-                conversationId: 'conv-123',
-                parentId: 'user'
-            });
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                'Provide analysis for: fitness tracking app',
+                {
+                    traceId: 'trace-123',
+                    conversationId: 'conv-123',
+                    parentId: 'user',
+                }
+            );
 
             expect(response).toEqual({
                 from: 'researcher',
                 to: 'user',
-                content: expect.stringContaining('Here are some key points about "fitness tracking app"'),
+                content: expect.stringContaining(
+                    'Here are some key points about "fitness tracking app"'
+                ),
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
-            expect(response.content).toContain('Analyst insight:\nAnalytical insights about fitness apps');
+            expect(response.content).toContain(
+                'Analyst insight:\nAnalytical insights about fitness apps'
+            );
         });
 
         it('should handle case-insensitive topic extraction', async () => {
@@ -114,7 +131,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const message: AgentMessage = {
@@ -122,13 +139,19 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'RESEARCH THIS GOAL: wellness app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', 'Provide analysis for: wellness app', expect.any(Object));
-            expect(response.content).toContain('Here are some key points about "wellness app"');
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                'Provide analysis for: wellness app',
+                expect.any(Object)
+            );
+            expect(response.content).toContain(
+                'Here are some key points about "wellness app"'
+            );
         });
 
         it('should handle message without prefix', async () => {
@@ -141,7 +164,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const message: AgentMessage = {
@@ -149,25 +172,32 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Just research this topic',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', 'Provide analysis for: Just research this topic', expect.any(Object));
-            expect(response.content).toContain('Here are some key points about "Just research this topic"');
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                'Provide analysis for: Just research this topic',
+                expect.any(Object)
+            );
+            expect(response.content).toContain(
+                'Here are some key points about "Just research this topic"'
+            );
         });
 
         it('should handle missing analyst gracefully', async () => {
             // Mock no analyst found
             mockContext.findAgent = vi.fn().mockReturnValue(undefined);
+            mockContext.send = vi.fn(); // Add this to make it a spy
 
             const message: AgentMessage = {
                 from: 'user',
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
@@ -178,9 +208,10 @@ describe('ResearcherAgent', () => {
             expect(response).toEqual({
                 from: 'researcher',
                 to: 'user',
-                content: 'General info for "fitness tracking app" but no analyst available.',
+                content:
+                    'General info for "fitness tracking app" but no analyst available.',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
         });
 
@@ -194,7 +225,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'custom-trace',
-                conversationId: 'custom-conv'
+                conversationId: 'custom-conv',
             });
 
             const message: AgentMessage = {
@@ -202,7 +233,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'custom-trace',
-                conversationId: 'custom-conv'
+                conversationId: 'custom-conv',
             };
 
             const response = await researcherAgent.receiveMessage(message);
@@ -221,13 +252,13 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'mock-uuid-12345',
-                conversationId: 'mock-uuid-12345'
+                conversationId: 'mock-uuid-12345',
             });
 
             const message: AgentMessage = {
                 from: 'user',
                 to: 'researcher',
-                content: 'Research this goal: fitness tracking app'
+                content: 'Research this goal: fitness tracking app',
             };
 
             const response = await researcherAgent.receiveMessage(message);
@@ -244,10 +275,12 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
-            await expect(agentWithoutContext.receiveMessage(message)).rejects.toThrow('No context set for researcher');
+            await expect(agentWithoutContext.receiveMessage(message)).rejects.toThrow(
+                'No context set for researcher'
+            );
         });
 
         it('should include predefined research summary', async () => {
@@ -260,7 +293,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights about fitness apps',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const message: AgentMessage = {
@@ -268,14 +301,20 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(response.content).toContain('Common features: user tracking, progress charts, reminders');
-            expect(response.content).toContain('Competitors: FitTrack, MyFitnessPal, Google Fit');
-            expect(response.content).toContain('Trends: Wearable integration, gamification, habit loops');
+            expect(response.content).toContain(
+                'Common features: user tracking, progress charts, reminders'
+            );
+            expect(response.content).toContain(
+                'Competitors: FitTrack, MyFitnessPal, Google Fit'
+            );
+            expect(response.content).toContain(
+                'Trends: Wearable integration, gamification, habit loops'
+            );
         });
 
         it('should handle context send errors', async () => {
@@ -290,7 +329,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: fitness tracking app',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
@@ -298,9 +337,10 @@ describe('ResearcherAgent', () => {
             expect(response).toEqual({
                 from: 'researcher',
                 to: 'user',
-                content: 'Error: Failed to get analysis for "fitness tracking app". Send failed',
+                content:
+                    'Error: Failed to get analysis for "fitness tracking app". Send failed',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
         });
     });
@@ -316,7 +356,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const message: AgentMessage = {
@@ -324,12 +364,16 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Research this goal: ',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', 'Provide analysis for: ', expect.any(Object));
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                'Provide analysis for: ',
+                expect.any(Object)
+            );
             expect(response.content).toContain('Here are some key points about ""');
         });
 
@@ -343,7 +387,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const longTopic = 'A'.repeat(1000);
@@ -352,13 +396,19 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: `Research this goal: ${longTopic}`,
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', `Provide analysis for: ${longTopic}`, expect.any(Object));
-            expect(response.content).toContain(`Here are some key points about "${longTopic}"`);
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                `Provide analysis for: ${longTopic}`,
+                expect.any(Object)
+            );
+            expect(response.content).toContain(
+                `Here are some key points about "${longTopic}"`
+            );
         });
 
         it('should handle special characters in topic', async () => {
@@ -371,7 +421,7 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: 'Analytical insights',
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             });
 
             const specialTopic = 'App with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -380,13 +430,19 @@ describe('ResearcherAgent', () => {
                 to: 'researcher',
                 content: `Research this goal: ${specialTopic}`,
                 traceId: 'trace-123',
-                conversationId: 'conv-123'
+                conversationId: 'conv-123',
             };
 
             const response = await researcherAgent.receiveMessage(message);
 
-            expect(mockContext.send).toHaveBeenCalledWith('analyst', `Provide analysis for: ${specialTopic}`, expect.any(Object));
-            expect(response.content).toContain(`Here are some key points about "${specialTopic}"`);
+            expect(mockContext.send).toHaveBeenCalledWith(
+                'analyst',
+                `Provide analysis for: ${specialTopic}`,
+                expect.any(Object)
+            );
+            expect(response.content).toContain(
+                `Here are some key points about "${specialTopic}"`
+            );
         });
     });
-}); 
+});

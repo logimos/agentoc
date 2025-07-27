@@ -1,32 +1,35 @@
-import { AgentResponse } from './AgentProtocol'
+import { AgentResponse } from './AgentProtocol';
 
-type OnComplete = (responses: AgentResponse[]) => void
+type OnComplete = (responses: AgentResponse[]) => void;
 
 export class ConversationTracker {
-    private conversations = new Map<string, {
-        waitingFor: Set<string>,
-        responses: AgentResponse[],
-        onComplete: OnComplete
-    }>()
-
-    start(conversationId: string, waitFor: string[], onComplete: OnComplete) {
-        this.conversations.set(conversationId, {
-            waitingFor: new Set(waitFor),
-            responses: [],
-            onComplete
-        })
+  private conversations = new Map<
+    string,
+    {
+      waitingFor: Set<string>;
+      responses: AgentResponse[];
+      onComplete: OnComplete;
     }
+  >();
 
-    receive(conversationId: string, response: AgentResponse) {
-        const conv = this.conversations.get(conversationId)
-        if (!conv) return
+  start(conversationId: string, waitFor: string[], onComplete: OnComplete) {
+    this.conversations.set(conversationId, {
+      waitingFor: new Set(waitFor),
+      responses: [],
+      onComplete,
+    });
+  }
 
-        conv.responses.push(response)
-        conv.waitingFor.delete(response.from)
+  receive(conversationId: string, response: AgentResponse) {
+    const conv = this.conversations.get(conversationId);
+    if (!conv) return;
 
-        if (conv.waitingFor.size === 0) {
-            this.conversations.delete(conversationId)
-            conv.onComplete(conv.responses)
-        }
+    conv.responses.push(response);
+    conv.waitingFor.delete(response.from);
+
+    if (conv.waitingFor.size === 0) {
+      this.conversations.delete(conversationId);
+      conv.onComplete(conv.responses);
     }
+  }
 }

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import {
+    Agent,
+    AgentMessage,
+    AgentResponse,
+} from '../core/AgentProtocol';
 import { MessageBus } from '../core/MessageBus';
-import { Agent, AgentMessage, AgentResponse, Capability } from '../core/AgentProtocol';
 
 // Mock console.log to avoid cluttering test output
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
@@ -21,14 +26,14 @@ describe('MessageBus', () => {
             name: 'Test Agent 1',
             capabilities: [
                 { name: 'chat', description: 'Can chat with users' },
-                { name: 'search', description: 'Can search the web' }
+                { name: 'search', description: 'Can search the web' },
             ],
             receiveMessage: vi.fn().mockResolvedValue({
                 from: 'agent-1',
                 to: 'user',
                 content: 'Hello from agent 1',
-                traceId: 'trace-123'
-            })
+                traceId: 'trace-123',
+            }),
         };
 
         mockAgent2 = {
@@ -36,28 +41,26 @@ describe('MessageBus', () => {
             name: 'Test Agent 2',
             capabilities: [
                 { name: 'chat', description: 'Can chat with users' },
-                { name: 'database', description: 'Can access database' }
+                { name: 'database', description: 'Can access database' },
             ],
             receiveMessage: vi.fn().mockResolvedValue({
                 from: 'agent-2',
                 to: 'user',
                 content: 'Hello from agent 2',
-                traceId: 'trace-456'
-            })
+                traceId: 'trace-456',
+            }),
         };
 
         mockAgent3 = {
             id: 'agent-3',
             name: 'Test Agent 3',
-            capabilities: [
-                { name: 'database', description: 'Can access database' }
-            ],
+            capabilities: [{ name: 'database', description: 'Can access database' }],
             receiveMessage: vi.fn().mockResolvedValue({
                 from: 'agent-3',
                 to: 'user',
                 content: 'Hello from agent 3',
-                traceId: 'trace-789'
-            })
+                traceId: 'trace-789',
+            }),
         };
     });
 
@@ -88,7 +91,9 @@ describe('MessageBus', () => {
             const updatedAgent1 = {
                 ...mockAgent1,
                 name: 'Updated Agent 1',
-                capabilities: [{ name: 'new-capability', description: 'New capability' }]
+                capabilities: [
+                    { name: 'new-capability', description: 'New capability' },
+                ],
             };
 
             messageBus.register(updatedAgent1);
@@ -110,7 +115,7 @@ describe('MessageBus', () => {
                 from: 'user',
                 to: 'agent-1',
                 content: 'Hello agent 1',
-                traceId: 'trace-123'
+                traceId: 'trace-123',
             };
 
             const response = await messageBus.send(message);
@@ -120,9 +125,11 @@ describe('MessageBus', () => {
                 from: 'agent-1',
                 to: 'user',
                 content: 'Hello from agent 1',
-                traceId: 'trace-123'
+                traceId: 'trace-123',
             });
-            expect(consoleSpy).toHaveBeenCalledWith('[DISPATCH] [trace-123] user → agent-1');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[DISPATCH] [trace-123] user → agent-1'
+            );
         });
 
         it('should throw error when sending to non-existent agent', async () => {
@@ -130,10 +137,12 @@ describe('MessageBus', () => {
                 from: 'user',
                 to: 'non-existent-agent',
                 content: 'Hello non-existent agent',
-                traceId: 'trace-123'
+                traceId: 'trace-123',
             };
 
-            await expect(messageBus.send(message)).rejects.toThrow('Agent non-existent-agent not found');
+            await expect(messageBus.send(message)).rejects.toThrow(
+                'Agent non-existent-agent not found'
+            );
         });
 
         it('should preserve traceId in response', async () => {
@@ -141,7 +150,7 @@ describe('MessageBus', () => {
                 from: 'user',
                 to: 'agent-1',
                 content: 'Test message',
-                traceId: 'custom-trace-id'
+                traceId: 'custom-trace-id',
             };
 
             const response = await messageBus.send(message);
@@ -153,13 +162,15 @@ describe('MessageBus', () => {
             const message: AgentMessage = {
                 from: 'user',
                 to: 'agent-1',
-                content: 'Test message without traceId'
+                content: 'Test message without traceId',
             };
 
             const response = await messageBus.send(message);
 
             expect(response.traceId).toBeUndefined();
-            expect(consoleSpy).toHaveBeenCalledWith('[DISPATCH] [undefined] user → agent-1');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[DISPATCH] [undefined] user → agent-1'
+            );
         });
 
         it('should handle message with all optional fields', async () => {
@@ -173,8 +184,8 @@ describe('MessageBus', () => {
                 metadata: {
                     hops: ['hop1', 'hop2'],
                     depth: 2,
-                    deadline: Date.now() + 5000
-                }
+                    deadline: Date.now() + 5000,
+                },
             };
 
             const response = await messageBus.send(message);
@@ -188,18 +199,23 @@ describe('MessageBus', () => {
                 from: 'agent-1',
                 to: 'user',
                 content: 'Delayed response',
-                traceId: 'trace-123'
+                traceId: 'trace-123',
             };
 
-            mockAgent1.receiveMessage = vi.fn().mockImplementation(() =>
-                new Promise(resolve => setTimeout(() => resolve(delayedResponse), 10))
-            );
+            mockAgent1.receiveMessage = vi
+                .fn()
+                .mockImplementation(
+                    () =>
+                        new Promise((resolve) =>
+                            global.setTimeout(() => resolve(delayedResponse), 10)
+                        )
+                );
 
             const message: AgentMessage = {
                 from: 'user',
                 to: 'agent-1',
                 content: 'Test async response',
-                traceId: 'trace-123'
+                traceId: 'trace-123',
             };
 
             const response = await messageBus.send(message);
@@ -219,22 +235,23 @@ describe('MessageBus', () => {
             const chatAgents = messageBus.getAgentsByCapability('chat');
 
             expect(chatAgents).toHaveLength(2);
-            expect(chatAgents.map(agent => agent.id)).toContain('agent-1');
-            expect(chatAgents.map(agent => agent.id)).toContain('agent-2');
-            expect(chatAgents.map(agent => agent.id)).not.toContain('agent-3');
+            expect(chatAgents.map((agent) => agent.id)).toContain('agent-1');
+            expect(chatAgents.map((agent) => agent.id)).toContain('agent-2');
+            expect(chatAgents.map((agent) => agent.id)).not.toContain('agent-3');
         });
 
         it('should return agents with database capability', () => {
             const databaseAgents = messageBus.getAgentsByCapability('database');
 
             expect(databaseAgents).toHaveLength(2);
-            expect(databaseAgents.map(agent => agent.id)).toContain('agent-2');
-            expect(databaseAgents.map(agent => agent.id)).toContain('agent-3');
-            expect(databaseAgents.map(agent => agent.id)).not.toContain('agent-1');
+            expect(databaseAgents.map((agent) => agent.id)).toContain('agent-2');
+            expect(databaseAgents.map((agent) => agent.id)).toContain('agent-3');
+            expect(databaseAgents.map((agent) => agent.id)).not.toContain('agent-1');
         });
 
         it('should return empty array for non-existent capability', () => {
-            const nonExistentAgents = messageBus.getAgentsByCapability('non-existent');
+            const nonExistentAgents =
+                messageBus.getAgentsByCapability('non-existent');
 
             expect(nonExistentAgents).toHaveLength(0);
             expect(nonExistentAgents).toEqual([]);
@@ -268,19 +285,25 @@ describe('MessageBus', () => {
 
             expect(firstChatAgent).toBeDefined();
             expect(firstChatAgent?.id).toBe('agent-1');
-            expect(firstChatAgent?.capabilities.some(c => c.name === 'chat')).toBe(true);
+            expect(firstChatAgent?.capabilities.some((c) => c.name === 'chat')).toBe(
+                true
+            );
         });
 
         it('should return first agent with database capability', () => {
-            const firstDatabaseAgent = messageBus.getFirstAgentByCapability('database');
+            const firstDatabaseAgent =
+                messageBus.getFirstAgentByCapability('database');
 
             expect(firstDatabaseAgent).toBeDefined();
             expect(firstDatabaseAgent?.id).toBe('agent-2');
-            expect(firstDatabaseAgent?.capabilities.some(c => c.name === 'database')).toBe(true);
+            expect(
+                firstDatabaseAgent?.capabilities.some((c) => c.name === 'database')
+            ).toBe(true);
         });
 
         it('should return undefined for non-existent capability', () => {
-            const nonExistentAgent = messageBus.getFirstAgentByCapability('non-existent');
+            const nonExistentAgent =
+                messageBus.getFirstAgentByCapability('non-existent');
 
             expect(nonExistentAgent).toBeUndefined();
         });
@@ -354,7 +377,7 @@ describe('MessageBus', () => {
                 from: 'user',
                 to: 'agent-1',
                 content: 'Integration test message',
-                traceId: 'integration-trace'
+                traceId: 'integration-trace',
             };
 
             const response = await messageBus.send(message);
@@ -370,13 +393,15 @@ describe('MessageBus', () => {
             const replacementAgent: Agent = {
                 id: 'agent-1',
                 name: 'Replacement Agent 1',
-                capabilities: [{ name: 'new-capability', description: 'New capability' }],
+                capabilities: [
+                    { name: 'new-capability', description: 'New capability' },
+                ],
                 receiveMessage: vi.fn().mockResolvedValue({
                     from: 'agent-1',
                     to: 'user',
                     content: 'Replacement response',
-                    traceId: 'trace-123'
-                })
+                    traceId: 'trace-123',
+                }),
             };
 
             messageBus.register(replacementAgent);
@@ -386,7 +411,8 @@ describe('MessageBus', () => {
             expect(agents).toContain('agent-1');
 
             // Verify capability change
-            const newCapabilityAgents = messageBus.getAgentsByCapability('new-capability');
+            const newCapabilityAgents =
+                messageBus.getAgentsByCapability('new-capability');
             expect(newCapabilityAgents).toHaveLength(1);
             expect(newCapabilityAgents[0].id).toBe('agent-1');
 
@@ -394,4 +420,4 @@ describe('MessageBus', () => {
             expect(chatAgents).toHaveLength(0);
         });
     });
-}); 
+});

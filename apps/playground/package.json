@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "test:coverage": "vitest run --coverage",
+    "lint:fix": "eslint . --ext .ts --config ../../eslint.config.js --fix",
     "build": "tsup src/index.ts --format esm,cjs",
     "watch": "tsup src/index.ts --watch",
     "dev": "tsup src/index.ts --onSuccess \"node dist/index.js\"",

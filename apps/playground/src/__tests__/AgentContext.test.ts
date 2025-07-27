@@ -1,17 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { AgentContext } from '../core/AgentContext';
-import { MessageBus } from '../core/MessageBus';
-import { Agent, MemoryEntry } from '../core/AgentProtocol';
-import { MemoryStore } from '../core/AgentMemory';
 import fs from 'fs';
 import path from 'path';
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { AgentContext } from '../core/AgentContext';
+import { Agent } from '../core/AgentProtocol';
+import { MessageBus } from '../core/MessageBus';
 
 // Mock console.log to avoid cluttering test output
 const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
 
 // Mock uuid to return predictable values
 vi.mock('uuid', () => ({
-    v4: vi.fn(() => 'mock-uuid-12345')
+    v4: vi.fn(() => 'mock-uuid-12345'),
 }));
 
 // Helper function to clean up memory files
@@ -19,7 +20,7 @@ function cleanupMemoryFiles() {
     const memoryDir = path.join(process.cwd(), 'memory');
     if (fs.existsSync(memoryDir)) {
         const files = fs.readdirSync(memoryDir);
-        files.forEach(file => {
+        files.forEach((file) => {
             if (file.endsWith('.json')) {
                 fs.unlinkSync(path.join(memoryDir, file));
             }
@@ -42,8 +43,8 @@ describe('AgentContext', () => {
             register: vi.fn(),
             getAgentsByCapability: vi.fn(),
             getFirstAgentByCapability: vi.fn(),
-            listAgents: vi.fn()
-        } as any;
+            listAgents: vi.fn(),
+        } as unknown as MessageBus;
 
         // Create mock agent
         mockAgent = {
@@ -51,15 +52,15 @@ describe('AgentContext', () => {
             name: 'Test Agent',
             capabilities: [
                 { name: 'chat', description: 'Can chat with users' },
-                { name: 'search', description: 'Can search the web' }
+                { name: 'search', description: 'Can search the web' },
             ],
             receiveMessage: vi.fn().mockResolvedValue({
                 from: 'test-agent',
                 to: 'context-agent',
                 content: 'Hello from test agent',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
-            })
+                conversationId: 'conv-456',
+            }),
         };
 
         agentContext = new AgentContext(mockMessageBus, 'context-agent');
@@ -76,12 +77,15 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
         });
 
         it('should send message successfully with default options', async () => {
-            const response = await agentContext.send('test-agent', 'Hello test agent');
+            const response = await agentContext.send(
+                'test-agent',
+                'Hello test agent'
+            );
 
             expect(mockMessageBus.send).toHaveBeenCalledWith({
                 from: 'context-agent',
@@ -91,8 +95,8 @@ describe('AgentContext', () => {
                 conversationId: 'mock-uuid-12345',
                 metadata: {
                     hops: ['context-agent'],
-                    depth: 1
-                }
+                    depth: 1,
+                },
             });
 
             expect(response).toEqual({
@@ -100,11 +104,15 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
-            expect(consoleSpy).toHaveBeenCalledWith('[SEND] [mock-uuid-12345] context-agent → test-agent :: Hello test agent');
-            expect(consoleSpy).toHaveBeenCalledWith('[RECV] [mock-uuid-12345] test-agent → context-agent :: Response from test agent');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[SEND] [mock-uuid-12345] context-agent → test-agent :: Hello test agent'
+            );
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[RECV] [mock-uuid-12345] test-agent → context-agent :: Response from test agent'
+            );
         });
 
         it('should use provided traceId and conversationId', async () => {
@@ -114,13 +122,17 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'custom-trace',
-                conversationId: 'custom-conv'
+                conversationId: 'custom-conv',
             });
 
-            const response = await agentContext.send('test-agent', 'Hello test agent', {
-                traceId: 'custom-trace',
-                conversationId: 'custom-conv'
-            });
+            const response = await agentContext.send(
+                'test-agent',
+                'Hello test agent',
+                {
+                    traceId: 'custom-trace',
+                    conversationId: 'custom-conv',
+                }
+            );
 
             expect(mockMessageBus.send).toHaveBeenCalledWith({
                 from: 'context-agent',
@@ -130,25 +142,29 @@ describe('AgentContext', () => {
                 conversationId: 'custom-conv',
                 metadata: {
                     hops: ['context-agent'],
-                    depth: 1
-                }
+                    depth: 1,
+                },
             });
 
             expect(response.traceId).toBe('custom-trace');
         });
 
         it('should handle message with all optional fields', async () => {
-            const response = await agentContext.send('test-agent', 'Hello test agent', {
-                traceId: 'custom-trace',
-                conversationId: 'custom-conv',
-                parentId: 'parent-123',
-                metadata: {
-                    hops: ['previous-hop'],
-                    depth: 2,
-                    deadline: Date.now() + 5000
-                },
-                stupid: 'User visible message'
-            });
+            await agentContext.send(
+                'test-agent',
+                'Hello test agent',
+                {
+                    traceId: 'custom-trace',
+                    conversationId: 'custom-conv',
+                    parentId: 'parent-123',
+                    metadata: {
+                        hops: ['previous-hop'],
+                        depth: 2,
+                        deadline: Date.now() + 5000,
+                    },
+                    stupid: 'User visible message',
+                }
+            );
 
             expect(mockMessageBus.send).toHaveBeenCalledWith({
                 from: 'context-agent',
@@ -160,45 +176,66 @@ describe('AgentContext', () => {
                 metadata: {
                     hops: ['previous-hop', 'context-agent'],
                     depth: 3,
-                    deadline: expect.any(Number)
+                    deadline: expect.any(Number),
                 },
-                stupid: 'User visible message'
+                stupid: 'User visible message',
             });
         });
 
         it('should detect and prevent loops', async () => {
-            const response = await agentContext.send('test-agent', 'Hello test agent', {
-                metadata: {
-                    hops: ['context-agent', 'other-agent', 'context-agent'],
-                    depth: 3
+            const response = await agentContext.send(
+                'test-agent',
+                'Hello test agent',
+                {
+                    metadata: {
+                        hops: ['context-agent', 'other-agent', 'context-agent'],
+                        depth: 3,
+                    },
                 }
-            });
+            );
 
             expect(response).toEqual({
                 from: 'context-agent',
                 to: 'test-agent',
-                content: '[ERROR] Loop or depth limit reached (depth=4)\nHops: context-agent → other-agent → context-agent → context-agent',
+                content:
+                    '[ERROR] Loop or depth limit reached (depth=4)\nHops: context-agent → other-agent → context-agent → context-agent',
                 traceId: 'mock-uuid-12345',
-                conversationId: 'mock-uuid-12345'
+                conversationId: 'mock-uuid-12345',
             });
 
             expect(mockMessageBus.send).not.toHaveBeenCalled();
         });
 
         it('should prevent depth limit exceeded', async () => {
-            const response = await agentContext.send('test-agent', 'Hello test agent', {
-                metadata: {
-                    hops: ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8', 'agent9', 'agent10'],
-                    depth: 10
+            const response = await agentContext.send(
+                'test-agent',
+                'Hello test agent',
+                {
+                    metadata: {
+                        hops: [
+                            'agent1',
+                            'agent2',
+                            'agent3',
+                            'agent4',
+                            'agent5',
+                            'agent6',
+                            'agent7',
+                            'agent8',
+                            'agent9',
+                            'agent10',
+                        ],
+                        depth: 10,
+                    },
                 }
-            });
+            );
 
             expect(response).toEqual({
                 from: 'context-agent',
                 to: 'test-agent',
-                content: '[ERROR] Loop or depth limit reached (depth=11)\nHops: agent1 → agent2 → agent3 → agent4 → agent5 → agent6 → agent7 → agent8 → agent9 → agent10 → context-agent',
+                content:
+                    '[ERROR] Loop or depth limit reached (depth=11)\nHops: agent1 → agent2 → agent3 → agent4 → agent5 → agent6 → agent7 → agent8 → agent9 → agent10 → context-agent',
                 traceId: 'mock-uuid-12345',
-                conversationId: 'mock-uuid-12345'
+                conversationId: 'mock-uuid-12345',
             });
 
             expect(mockMessageBus.send).not.toHaveBeenCalled();
@@ -207,7 +244,7 @@ describe('AgentContext', () => {
         it('should record sent and received messages in memory', async () => {
             await agentContext.send('test-agent', 'Hello test agent', {
                 traceId: 'test-trace',
-                conversationId: 'test-conv'
+                conversationId: 'test-conv',
             });
 
             const memory = agentContext.getMemory('test-trace');
@@ -219,7 +256,7 @@ describe('AgentContext', () => {
                 peer: 'test-agent',
                 content: 'Hello test agent',
                 conversationId: 'test-conv',
-                timestamp: expect.any(Number)
+                timestamp: expect.any(Number),
             });
 
             // Check received message
@@ -228,14 +265,18 @@ describe('AgentContext', () => {
                 peer: 'test-agent',
                 content: 'Response from test agent',
                 conversationId: 'conv-456',
-                timestamp: expect.any(Number)
+                timestamp: expect.any(Number),
             });
         });
 
         it('should handle message bus errors', async () => {
-            mockMessageBus.send = vi.fn().mockRejectedValue(new Error('Message bus error'));
+            mockMessageBus.send = vi
+                .fn()
+                .mockRejectedValue(new Error('Message bus error'));
 
-            await expect(agentContext.send('test-agent', 'Hello test agent')).rejects.toThrow('Message bus error');
+            await expect(
+                agentContext.send('test-agent', 'Hello test agent')
+            ).rejects.toThrow('Message bus error');
         });
 
         it('should handle response with multi-line content for logging', async () => {
@@ -244,12 +285,14 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Line 1\nLine 2\nLine 3',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
             await agentContext.send('test-agent', 'Hello test agent');
 
-            expect(consoleSpy).toHaveBeenCalledWith('[RECV] [mock-uuid-12345] test-agent → context-agent :: Line 1');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[RECV] [mock-uuid-12345] test-agent → context-agent :: Line 1'
+            );
         });
 
         it('should handle empty response content', async () => {
@@ -258,31 +301,41 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: '',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
             await agentContext.send('test-agent', 'Hello test agent');
 
-            expect(consoleSpy).toHaveBeenCalledWith('[RECV] [mock-uuid-12345] test-agent → context-agent :: ');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[RECV] [mock-uuid-12345] test-agent → context-agent :: '
+            );
         });
     });
 
     describe('findAgent', () => {
         it('should return first agent with matching capability', () => {
-            mockMessageBus.getFirstAgentByCapability = vi.fn().mockReturnValue(mockAgent);
+            mockMessageBus.getFirstAgentByCapability = vi
+                .fn()
+                .mockReturnValue(mockAgent);
 
             const agentId = agentContext.findAgent('chat');
 
-            expect(mockMessageBus.getFirstAgentByCapability).toHaveBeenCalledWith('chat');
+            expect(mockMessageBus.getFirstAgentByCapability).toHaveBeenCalledWith(
+                'chat'
+            );
             expect(agentId).toBe('test-agent');
         });
 
         it('should return undefined when no agent has capability', () => {
-            mockMessageBus.getFirstAgentByCapability = vi.fn().mockReturnValue(undefined);
+            mockMessageBus.getFirstAgentByCapability = vi
+                .fn()
+                .mockReturnValue(undefined);
 
             const agentId = agentContext.findAgent('non-existent');
 
-            expect(mockMessageBus.getFirstAgentByCapability).toHaveBeenCalledWith('non-existent');
+            expect(mockMessageBus.getFirstAgentByCapability).toHaveBeenCalledWith(
+                'non-existent'
+            );
             expect(agentId).toBeUndefined();
         });
     });
@@ -290,12 +343,29 @@ describe('AgentContext', () => {
     describe('findAgents', () => {
         it('should return all agent IDs with matching capability', () => {
             const mockAgents = [
-                { id: 'agent-1', name: 'Agent 1', capabilities: [], receiveMessage: vi.fn() },
-                { id: 'agent-2', name: 'Agent 2', capabilities: [], receiveMessage: vi.fn() },
-                { id: 'agent-3', name: 'Agent 3', capabilities: [], receiveMessage: vi.fn() }
+                {
+                    id: 'agent-1',
+                    name: 'Agent 1',
+                    capabilities: [],
+                    receiveMessage: vi.fn(),
+                },
+                {
+                    id: 'agent-2',
+                    name: 'Agent 2',
+                    capabilities: [],
+                    receiveMessage: vi.fn(),
+                },
+                {
+                    id: 'agent-3',
+                    name: 'Agent 3',
+                    capabilities: [],
+                    receiveMessage: vi.fn(),
+                },
             ];
 
-            mockMessageBus.getAgentsByCapability = vi.fn().mockReturnValue(mockAgents);
+            mockMessageBus.getAgentsByCapability = vi
+                .fn()
+                .mockReturnValue(mockAgents);
 
             const agentIds = agentContext.findAgents('chat');
 
@@ -308,7 +378,9 @@ describe('AgentContext', () => {
 
             const agentIds = agentContext.findAgents('non-existent');
 
-            expect(mockMessageBus.getAgentsByCapability).toHaveBeenCalledWith('non-existent');
+            expect(mockMessageBus.getAgentsByCapability).toHaveBeenCalledWith(
+                'non-existent'
+            );
             expect(agentIds).toEqual([]);
         });
     });
@@ -321,12 +393,12 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'test-trace',
-                conversationId: 'test-conv'
+                conversationId: 'test-conv',
             });
 
             await agentContext.send('test-agent', 'Hello test agent', {
                 traceId: 'test-trace',
-                conversationId: 'test-conv'
+                conversationId: 'test-conv',
             });
 
             const memory = agentContext.getMemory('test-trace');
@@ -357,14 +429,18 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'integration-trace',
-                conversationId: 'integration-conv'
+                conversationId: 'integration-conv',
             });
 
             // Send a message
-            const response = await agentContext.send('test-agent', 'Integration test message', {
-                traceId: 'integration-trace',
-                conversationId: 'integration-conv'
-            });
+            const response = await agentContext.send(
+                'test-agent',
+                'Integration test message',
+                {
+                    traceId: 'integration-trace',
+                    conversationId: 'integration-conv',
+                }
+            );
 
             // Verify response
             expect(response.from).toBe('test-agent');
@@ -377,8 +453,12 @@ describe('AgentContext', () => {
             expect(memory[1].content).toBe('Response from test agent');
 
             // Verify console logging
-            expect(consoleSpy).toHaveBeenCalledWith('[SEND] [integration-trace] context-agent → test-agent :: Integration test message');
-            expect(consoleSpy).toHaveBeenCalledWith('[RECV] [integration-trace] test-agent → context-agent :: Response from test agent');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[SEND] [integration-trace] context-agent → test-agent :: Integration test message'
+            );
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[RECV] [integration-trace] test-agent → context-agent :: Response from test agent'
+            );
         });
 
         it('should handle multiple messages with different trace IDs', async () => {
@@ -388,13 +468,13 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'trace-1',
-                conversationId: 'conv-1'
+                conversationId: 'conv-1',
             });
 
             // Send first message
             await agentContext.send('test-agent', 'First message', {
                 traceId: 'trace-1',
-                conversationId: 'conv-1'
+                conversationId: 'conv-1',
             });
 
             // Update mock for second message
@@ -403,13 +483,13 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response from test agent',
                 traceId: 'trace-2',
-                conversationId: 'conv-2'
+                conversationId: 'conv-2',
             });
 
             // Send second message
             await agentContext.send('test-agent', 'Second message', {
                 traceId: 'trace-2',
-                conversationId: 'conv-2'
+                conversationId: 'conv-2',
             });
 
             // Verify separate memory for each trace
@@ -424,8 +504,12 @@ describe('AgentContext', () => {
 
         it('should handle agent discovery and messaging', async () => {
             // Mock agent discovery
-            mockMessageBus.getFirstAgentByCapability = vi.fn().mockReturnValue(mockAgent);
-            mockMessageBus.getAgentsByCapability = vi.fn().mockReturnValue([mockAgent]);
+            mockMessageBus.getFirstAgentByCapability = vi
+                .fn()
+                .mockReturnValue(mockAgent);
+            mockMessageBus.getAgentsByCapability = vi
+                .fn()
+                .mockReturnValue([mockAgent]);
 
             // Set up mock response for messaging
             mockMessageBus.send = vi.fn().mockResolvedValue({
@@ -433,7 +517,7 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Message to found agent response',
                 traceId: 'discovery-trace',
-                conversationId: 'discovery-conv'
+                conversationId: 'discovery-conv',
             });
 
             // Find agent by capability
@@ -457,16 +541,19 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: longContent,
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
             await agentContext.send('test-agent', 'Hello test agent');
 
-            expect(consoleSpy).toHaveBeenCalledWith(`[RECV] [mock-uuid-12345] test-agent → context-agent :: ${longContent.split('\n')[0]}`);
+            expect(consoleSpy).toHaveBeenCalledWith(
+                `[RECV] [mock-uuid-12345] test-agent → context-agent :: ${longContent.split('\n')[0]}`
+            );
         });
 
         it('should handle special characters in content', async () => {
-            const specialContent = 'Message with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
+            const specialContent =
+                'Message with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
 
             // Set up mock response for this test
             mockMessageBus.send = vi.fn().mockResolvedValue({
@@ -474,12 +561,14 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Response with special chars',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
             await agentContext.send('test-agent', specialContent);
 
-            expect(consoleSpy).toHaveBeenCalledWith(`[SEND] [mock-uuid-12345] context-agent → test-agent :: ${specialContent}`);
+            expect(consoleSpy).toHaveBeenCalledWith(
+                `[SEND] [mock-uuid-12345] context-agent → test-agent :: ${specialContent}`
+            );
         });
 
         it('should handle empty content', async () => {
@@ -489,12 +578,14 @@ describe('AgentContext', () => {
                 to: 'context-agent',
                 content: 'Empty content response',
                 traceId: 'trace-123',
-                conversationId: 'conv-456'
+                conversationId: 'conv-456',
             });
 
             await agentContext.send('test-agent', '');
 
-            expect(consoleSpy).toHaveBeenCalledWith('[SEND] [mock-uuid-12345] context-agent → test-agent :: ');
+            expect(consoleSpy).toHaveBeenCalledWith(
+                '[SEND] [mock-uuid-12345] context-agent → test-agent :: '
+            );
         });
     });
-}); 
+});
