@@ -25,7 +25,16 @@
     "@myorg/playground:test": "pnpm --filter @myorg/playground test",
     "@myorg/playground:test:ui": "pnpm --filter @myorg/playground test:ui",
     "@myorg/playground:clean": "pnpm --filter @myorg/playground clean",
-    "@myorg/playground:type-check": "pnpm --filter @myorg/playground type-check"
+    "@myorg/playground:type-check": "pnpm --filter @myorg/playground type-check",
+    "@myorg/dashboard:add": "pnpm --filter @myorg/dashboard add",
+    "@myorg/dashboard:build": "pnpm --filter @myorg/dashboard build",
+    "@myorg/dashboard:dev": "pnpm --filter @myorg/dashboard dev",
+    "@myorg/dashboard:lint": "pnpm --filter @myorg/dashboard lint",
+    "@myorg/dashboard:format": "pnpm --filter @myorg/dashboard format",
+    "@myorg/dashboard:test": "pnpm --filter @myorg/dashboard test",
+    "@myorg/dashboard:test:ui": "pnpm --filter @myorg/dashboard test:ui",
+    "@myorg/dashboard:clean": "pnpm --filter @myorg/dashboard clean",
+    "@myorg/dashboard:type-check": "pnpm --filter @myorg/dashboard type-check"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.5",
